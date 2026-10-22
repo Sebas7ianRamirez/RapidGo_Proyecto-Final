@@ -1,9 +1,9 @@
 # KPIs y Reglas de Alerta — Variante 9 (Observabilidad tecnológica)
-
+El presente documento define formalmente los KPIs y las reglas de alerta automáticas para la infraestructura de microservicios. Todos los cálculos se basan estrictamente en los campos `servicio`, `codigo_http` y `latencia_ms` definidos en el contrato de datos formal (`samples/contrato_evento.schema.json`).
 ## KPIs
 
 ### 1. Error rate
-- **Fórmula:** count(codigo_http >= 500) / count(total eventos), agrupado por `servicio`
+- **Fórmula matemática:** error_rate= count(eventos con codigo_http >= 500) / count(total de eventos válidos), agrupado por `servicio`
 - **Ventana:** 1 minuto (tumbling o sliding)
 - **Umbral de referencia:** normal si ≤ 5%
 
