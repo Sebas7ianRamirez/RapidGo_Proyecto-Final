@@ -1,0 +1,5 @@
+* text=auto eol=lf
+
+#Esto evita problemas de saltos de línea entre tu Windows y el Ubuntu de Joseph. Importa sobre todo en scripts que corren en contenedores.
+
+#Por qué no usé un patrón como **/checkpoints/: también ignoraría docs/checkpoints/, donde van semana1.md a semana3.md, que sí se entregan. Los checkpoints de Spark irán en datalake/ o spark-checkpoints/, ambas ignoradas.
