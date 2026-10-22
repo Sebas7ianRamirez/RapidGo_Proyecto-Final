@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EventoObservabilidadRapidGo",
+  "type": "object",
+  "required": ["event_id", "timestamp", "servicio", "endpoint", "metodo_http", "codigo_http", "latencia_ms"],
+  "properties": {
+    "event_id": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "servicio": { "type": "string", "enum": ["pedidos-api", "pagos-api", "tracking-api", "usuarios-api"] },
+    "endpoint": { "type": "string" },
+    "metodo_http": { "type": "string", "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"] },
+    "codigo_http": { "type": "integer", "minimum": 100, "maximum": 599 },
+    "latencia_ms": { "type": "number", "minimum": 0 },
+    "region": { "type": "string" },
+    "instancia": { "type": "string" }
+  }
+}
