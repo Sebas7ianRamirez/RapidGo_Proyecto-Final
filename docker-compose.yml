@@ -1,24 +1,59 @@
 services:
-  kafka:
-    image: apache/kafka:4.3.1
-    container_name: kafka
-    ports:
-      - "9092:9092" # EXTERNAL: acceso del producer/Spark desde el host
-    environment:
-      KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: broker,controller
-      # Listeners:
-      #   19092: comunicación interna entre brokers (PLAINTEXT)
-      #    9092: listener externo para clientes fuera de Docker (EXTERNAL)
-      #    9093: listener del controller KRaft (CONTROLLER)
-      KAFKA_LISTENERS: PLAINTEXT://:19092,EXTERNAL://:9092,CONTROLLER://:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:19092,EXTERNAL://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      # 0 solo para entorno local de desarrollo: evita esperas al iniciar consumers
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    kafka:
+        image: apache/kafka:4.3.1
+        container_name: kafka
+        ports:
+            - "9092:9092" # EXTERNAL: acceso del producer desde el host (Spark dentro de Docker usa kafka:19092)
+        environment:
+            KAFKA_NODE_ID: 1
+            KAFKA_PROCESS_ROLES: broker,controller
+            # Listeners:
+            #   19092: listener interno para clientes dentro de la red Docker (PLAINTEXT, p. ej. Spark)
+            #    9092: listener externo para clientes fuera de Docker (EXTERNAL, p. ej. producer en el host)
+            #    9093: listener del controller KRaft (CONTROLLER)
+            KAFKA_LISTENERS: PLAINTEXT://:19092,EXTERNAL://:9092,CONTROLLER://:9093
+            KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:19092,EXTERNAL://localhost:9092
+            KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+            KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+            KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+            KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+            KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+            KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+            KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+            # 0 solo para entorno local de desarrollo: evita esperas al iniciar consumers
+            KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+            # El topic se crea solo en kafka-init (3 particiones, ADR-001).
+            # Con false, un nombre de topic mal escrito falla en vez de crear un topic con particiones por defecto.
+            KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:19092 --list > /dev/null 2>&1",
+                ]
+            interval: 10s
+            timeout: 10s
+            retries: 10
+            start_period: 20s
+
+    # Servicio de un solo uso: crea el topic del ADR-001 y termina.
+    # --if-not-exists lo hace repetible (no falla si el topic ya existe).
+    kafka-init:
+        image: apache/kafka:4.3.1
+        container_name: kafka-init
+        depends_on:
+            kafka:
+                condition: service_healthy
+        restart: "no"
+        command:
+            - /opt/kafka/bin/kafka-topics.sh
+            - --create
+            - --if-not-exists
+            - --bootstrap-server
+            - kafka:19092
+            - --topic
+            - rapidgo.observabilidad.eventos
+            - --partitions
+            - "3"
+            - --replication-factor
+            - "1"
