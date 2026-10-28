@@ -1,0 +1,1 @@
+"""Generador de eventos de observabilidad de RapidGo (variante 9)."""
