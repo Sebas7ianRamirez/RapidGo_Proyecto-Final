@@ -1,5 +1,4 @@
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType
-from pyspark.sql.functions import col, to_timestamp
 
 evento_schema = StructType([
     StructField("event_id", StringType(), True),
