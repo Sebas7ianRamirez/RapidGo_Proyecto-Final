@@ -16,7 +16,13 @@ BASE_DIR = os.environ.get("RAPIDGO_BASE_DIR", "..")
 DATALAKE_PATH = os.path.join(BASE_DIR, "datalake")
 CHECKPOINTS_PATH = os.path.join(BASE_DIR, "spark-checkpoints")
 
-spark = SparkSession.builder.appName("RapidGo-Alertas").getOrCreate()
+# --- CORREGIDO: Se agrega el paquete de Kafka para evitar el error AnalysisException ---
+spark = (
+    SparkSession.builder
+    .appName("RapidGo-Alertas")
+    .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1")
+    .getOrCreate()
+)
 spark.sparkContext.setLogLevel("WARN")
 
 alerta_error_udf = udf(evaluar_alerta_error, BooleanType())
