@@ -16,7 +16,7 @@ from spark.reglas import evaluar_alerta_error, evaluar_alerta_latencia
         (0.01, False),  # ruido de fondo del escenario normal
         (0.0476, False),  # 1 error en 21 eventos: caso real observado, bajo el umbral
         (0.05, False),  # límite exacto
-        (0.0501, False),  # apenas por encima
+        (0.0501, True),  # apenas por encima
         (0.111, True),  # degradación observada en el Issue #13
         (1.0, True),  # todos los eventos fallan
     ],
