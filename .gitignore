@@ -46,3 +46,11 @@ Presentacion_Proyecto_Final*.pdf
 .DS_Store
 Thumbs.db
 *.log
+# Spark checkpoints y datos del data lake (no versionar)
+spark-checkpoints/
+datalake/raw/*
+datalake/processed/*
+datalake/curated/*
+!datalake/raw/.gitkeep
+!datalake/processed/.gitkeep
+!datalake/curated/.gitkeep
