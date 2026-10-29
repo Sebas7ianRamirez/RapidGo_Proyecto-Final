@@ -1,5 +1,48 @@
-# Spark checkpoints y datos del data lake (no versionar)
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.coverage
+htmlcov/
+
+# Secretos y credenciales (nunca subir)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+credentials*.json
+
+# Data Lake y datos generados (solo se versiona el README)
+datalake/*
+!datalake/README.md
 spark-checkpoints/
-datalake/raw/*
-datalake/processed/*
-datalake/curated/*
+*.parquet
+*.crc
+
+# Spark / Airflow en ejecución
+spark-warehouse/
+metastore_db/
+derby.log
+airflow/logs/
+airflow/*.db
+
+# Material del curso (no publicar)
+Guia_Proyecto_Final*.pdf
+Presentacion_Proyecto_Final*.pdf
+
+# Editor / sistema / logs
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
