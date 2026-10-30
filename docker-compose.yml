@@ -57,3 +57,37 @@ services:
             - "3"
             - --replication-factor
             - "1"
+
+    # Spark Structured Streaming dentro de Docker (Linux), igual para los tres integrantes.
+    # No arranca con `docker compose up`: se activa con el perfil "spark".
+    #   docker compose --profile spark up -d spark-streaming
+    # Lee de kafka:19092 y escribe Parquet en ./datalake; los checkpoints van a ./spark-checkpoints.
+    # user: root evita problemas de permisos en las carpetas montadas desde Windows.
+    # shuffle.partitions=3: con el valor por defecto (200) los micro-batches se atrasan en local.
+    spark-streaming:
+        image: spark:3.5.1-scala2.12-java17-python3-ubuntu
+        container_name: spark-streaming
+        profiles: ["spark"]
+        user: root
+        working_dir: /work/spark
+        depends_on:
+            kafka-init:
+                condition: service_completed_successfully
+        environment:
+            KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+            RAPIDGO_TOPIC: rapidgo.observabilidad.eventos
+            RAPIDGO_BASE_DIR: /work
+            HOME: /tmp
+        volumes:
+            - ./spark:/work/spark
+            - ./datalake:/work/datalake
+            - ./spark-checkpoints:/work/spark-checkpoints
+        command:
+            - /opt/spark/bin/spark-submit
+            - --packages
+            - org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1
+            - --conf
+            - spark.jars.ivy=/tmp/.ivy2
+            - --conf
+            - spark.sql.shuffle.partitions=3
+            - streaming_alertas.py
