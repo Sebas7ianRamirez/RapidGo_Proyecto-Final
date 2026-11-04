@@ -91,3 +91,29 @@ services:
             - --conf
             - spark.sql.shuffle.partitions=3
             - streaming_alertas.py
+
+    # Airflow 3.3.1 en modo standalone para desarrollo local (perfil "airflow").
+    #   docker compose --profile airflow up -d airflow
+    # Un solo contenedor con base SQLite: suficiente para un DAG lineal y evita Redis/Celery.
+    # El compose oficial (Celery) pide al menos 4 GB de memoria para Docker, idealmente 8 GB; el equipo
+    # comparte esa memoria con Kafka y Spark.
+    # UI en http://localhost:8088 (solo desde esta máquina): 8080 es el puerto por defecto de Spark Master UI.
+    # Los DAGs se montan desde ./airflow/dags. La base SQLite vive dentro del contenedor:
+    # usar `docker compose stop` y `start`; `down` borra el historial de ejecuciones.
+    airflow:
+        image: apache/airflow:3.3.1
+        container_name: airflow
+        profiles: ["airflow"]
+        depends_on:
+            kafka-init:
+                condition: service_completed_successfully
+        environment:
+            AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+            AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+        ports:
+            - "127.0.0.1:8088:8080"
+        volumes:
+            - ./airflow/dags:/opt/airflow/dags
+        command:
+            - airflow
+            - standalone
