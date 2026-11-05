@@ -87,10 +87,10 @@ El pipeline implementa:
 - Generación y publicación de eventos en Kafka con key `servicio` y escenarios de anomalía.
 - Topic `rapidgo.observabilidad.eventos` con 3 particiones.
 - Procesamiento con Spark Structured Streaming, ejecutado en Docker.
-- Persistencia en Parquet de los eventos válidos (`datalake/processed`) y de los KPIs con alertas (`datalake/curated`). La capa `raw` está pendiente.
+- Persistencia en Parquet de los eventos válidos (`datalake/processed`) y de los KPIs con alertas (`datalake/curated`).
 - Alertas de error rate alto y latencia crítica.
 - Pruebas automatizadas y CI con GitHub Actions.
-- Airflow 3.3.1 disponible en Docker (Semana 3, Issue #18); el DAG se construye en los siguientes Issues.
+- Airflow 3.3.1 disponible en Docker con el DAG rapidgo_pipeline_observabilidad implementado (Semana 3, Issues #18 y #19), integrando validación de capas, lectura real con Pandas, manejo de retries y transferencia de métricas mediante XCom.
 
 ## Cómo ejecutarlo
 
@@ -125,7 +125,7 @@ docker compose logs airflow | Select-String "password"
 ```
 
 - Interfaz web: <http://localhost:8088> (solo accesible desde la máquina local).
-- Los DAGs se leen de `airflow/dags`, montada en el contenedor.
+- Los DAGs se leen de `airflow/dags`, montada en el contenedor (con el datalake integrado en modo de solo lectura :ro).
 - La contraseña del usuario administrador se genera al primer arranque y se muestra en los logs.
 - **Versión:** Airflow 3.3.1, la versión estable que muestra la documentación oficial; la imagen `apache/airflow:3.3.1` está disponible. Se usa el modo `standalone` con SQLite en un solo contenedor, porque el compose oficial con Celery y Redis exige más memoria (la documentación pide al menos 4 GB para Docker) y aquí comparte recursos con Kafka y Spark. Es suficiente para un DAG lineal; no soporta tareas en paralelo.
 - El historial de ejecuciones vive dentro del contenedor: usar `docker compose stop` y `start`, no `down`.
