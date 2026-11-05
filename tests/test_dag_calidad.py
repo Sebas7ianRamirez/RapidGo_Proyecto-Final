@@ -12,10 +12,10 @@ import pytest
 
 DAG_FOLDER = Path(__file__).resolve().parent.parent / "airflow" / "dags"
 
-airflow = pytest.importorskip(
-    "airflow", reason="apache-airflow no está instalado en este entorno"
+airflow_models = pytest.importorskip(
+    "airflow.models", reason="apache-airflow no está instalado en este entorno"
 )
-from airflow.models import DagBag  # noqa: E402
+DagBag = airflow_models.DagBag
 
 
 @pytest.fixture(scope="module")
