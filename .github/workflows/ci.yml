@@ -33,6 +33,18 @@ jobs:
       - name: Validar sintaxis Python
         run: python -m compileall producer spark tests
 
+      - name: Instalar Apache Airflow
+        run: pip install apache-airflow==3.3.1 pandas pyarrow
+
+      - name: Validar DAG de Airflow con DagBag
+        run: |
+          python -c "
+          from airflow.models import DagBag
+          db = DagBag(dag_folder='airflow/dags')
+          assert db.import_errors == {}, db.import_errors
+          print('DAGs cargados correctamente:', list(db.dags.keys()))
+          "
+
       - name: Ejecutar pruebas
         run: pytest -v
 
