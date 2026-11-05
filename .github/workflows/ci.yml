@@ -34,7 +34,7 @@ jobs:
         run: python -m compileall producer spark tests
 
       - name: Instalar Apache Airflow
-        run: pip install apache-airflow==3.3.1
+        run: pip install apache-airflow==3.3.1 pandas pyarrow
 
       - name: Validar DAG de Airflow con DagBag
         run: |
