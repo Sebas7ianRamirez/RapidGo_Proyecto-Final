@@ -45,3 +45,45 @@ def test_las_dos_alertas_son_independientes():
     assert evaluar_alerta_error(0.2) is True and evaluar_alerta_latencia(300.0) is False
     # Latencia crítica sin errores: solo alerta de latencia.
     assert evaluar_alerta_error(0.0) is False and evaluar_alerta_latencia(3000.0) is True
+
+from spark.reglas import calcular_disponibilidad, evaluar_disponibilidad_critica
+
+
+@pytest.mark.parametrize(
+    "error_rate, disponibilidad_esperada",
+    [
+        (0.0, 1.0),
+        (0.05, 0.95),
+        (0.02, 0.98),
+        (1.0, 0.0),
+    ],
+)
+def test_calcular_disponibilidad(error_rate, disponibilidad_esperada):
+    assert calcular_disponibilidad(error_rate) == pytest.approx(disponibilidad_esperada)
+
+
+@pytest.mark.parametrize("error_rate", [-0.1, 1.5])
+def test_calcular_disponibilidad_rechaza_valores_fuera_de_rango(error_rate):
+    with pytest.raises(ValueError):
+        calcular_disponibilidad(error_rate)
+
+
+@pytest.mark.parametrize(
+    "disponibilidad, alerta",
+    [
+        (1.0, False),
+        (0.99, False),
+        (0.98, False),  # límite exacto: normal según kpis_alertas.md
+        (0.9799, True),
+        (0.5, True),
+    ],
+)
+def test_evaluar_disponibilidad_critica(disponibilidad, alerta):
+    assert evaluar_disponibilidad_critica(disponibilidad) is alerta
+
+
+@pytest.mark.parametrize("error_rate", [-0.01, -5])
+def test_alerta_error_alto_con_valor_negativo_sigue_siendo_valido_matematicamente(error_rate):
+    # Documentamos el comportamiento actual: evaluar_alerta_error no valida rango,
+    # solo compara contra el umbral. Un valor negativo nunca dispara la alerta.
+    assert evaluar_alerta_error(error_rate) is False
