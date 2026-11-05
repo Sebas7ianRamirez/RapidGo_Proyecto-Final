@@ -6,7 +6,7 @@ La condición es "mayor que": exactamente en el umbral NO alerta.
 
 import pytest
 
-from spark.reglas import evaluar_alerta_error, evaluar_alerta_latencia
+from spark.reglas import evaluar_alerta_error, evaluar_alerta_latencia, calcular_disponibilidad, evaluar_disponibilidad_critica
 
 
 @pytest.mark.parametrize(
@@ -45,9 +45,6 @@ def test_las_dos_alertas_son_independientes():
     assert evaluar_alerta_error(0.2) is True and evaluar_alerta_latencia(300.0) is False
     # Latencia crítica sin errores: solo alerta de latencia.
     assert evaluar_alerta_error(0.0) is False and evaluar_alerta_latencia(3000.0) is True
-
-from spark.reglas import calcular_disponibilidad, evaluar_disponibilidad_critica
-
 
 @pytest.mark.parametrize(
     "error_rate, disponibilidad_esperada",
