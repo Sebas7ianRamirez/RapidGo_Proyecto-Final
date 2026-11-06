@@ -72,15 +72,17 @@ Los detalles están en [`docs/kpis_alertas.md`](docs/kpis_alertas.md).
 
 - [ADR-001 — Topic, key y particiones de Kafka](docs/decisions/ADR-001-kafka-topic-key-particiones.md)
 - [ADR-002 — Validación y calibración de umbrales de alerta](docs/decisions/ADR-002-validacion-umbrales.md)
+- [ADR-003 — Recuperación ante fallos](docs/decisions/ADR-003-recuperacion-ante-fallos.md)
 
 ## Checkpoints semanales
 
 - [Semana 1](docs/checkpoints/semana1.md)
 - [Semana 2](docs/checkpoints/semana2.md)
-
+- [Semana 3](docs/checkpoints/semana3.md)
+  
 ## Estado actual
 
-La Semana 2 quedó cerrada con el release [`v0.2.0-streaming`](https://github.com/Sebas7ianRamirez/RapidGo_Proyecto-Final/releases/tag/v0.2.0-streaming).
+La Semana 3 quedó cerrada con el release [`v0.3.0-orchestration`](https://github.com/Sebas7ianRamirez/RapidGo_Proyecto-Final/releases/tag/v0.3.0-orchestration).
 
 El pipeline implementa:
 
@@ -89,28 +91,11 @@ El pipeline implementa:
 - Procesamiento con Spark Structured Streaming, ejecutado en Docker.
 - Persistencia en Parquet de los eventos válidos (`datalake/processed`) y de los KPIs con alertas (`datalake/curated`).
 - Alertas de error rate alto y latencia crítica.
+- Airflow 3.3.1 en Docker con el DAG `rapidgo_pipeline_observabilidad`: 5 tareas con dependencias lineales estrictas, retries configurados y transferencia de métricas vía XCom.
+- Validaciones estrictas en las capas raw y curated (solo Parquet real, falla si están vacías).
+- Fallo controlado y recuperación documentados (Issue #23): ausencia de datos, reintentos agotados, bloqueo en cascada y recuperación exitosa.
+- CI ampliado: valida sintaxis, ejecuta pruebas (incluyendo pruebas de calidad del DAG) e importa el DAG con `DagBag` antes de correr la suite completa.
 - Pruebas automatizadas y CI con GitHub Actions.
-- Airflow 3.3.1 disponible en Docker con el DAG rapidgo_pipeline_observabilidad implementado (Semana 3, Issues #18 y #19), integrando validación de capas, lectura real con Pandas, manejo de retries y transferencia de métricas mediante XCom.
-
-## Cómo ejecutarlo
-
-Prerrequisitos: Docker Desktop (o Docker Engine con Compose v2), Git y Python 3.12 o superior.
-
-```powershell
-# 1. Kafka y creación del topic
-docker compose up -d
-
-# 2. Entorno de Python (Windows; en Linux: source .venv/bin/activate)
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-
-# 3. Spark en Docker (iniciarlo antes del producer: lee solo eventos nuevos)
-docker compose --profile spark up -d spark-streaming
-
-# 4. Producer (por ejemplo, 60 s normales y 180 s de latencia alta en pagos-api)
-python -m producer.main --tasa 5 --escenario latencia_alta --anomalia-inicio 60 --anomalia-duracion 180 --max-eventos 2400
-```
 
 - Pruebas: `python -m pytest -v`.
 - Los Parquet quedan en `datalake/` y los checkpoints de Spark en `spark-checkpoints/`; ambas carpetas están en `.gitignore`.
@@ -134,11 +119,10 @@ docker compose logs airflow | Select-String "password"
 
 | Integrante | Pull Requests principales (Issue) |
 |---|---|
-| Juan Sebastián Organista Ramirez | #35 ADR-001 (#6), #38 README y plantilla de PR (#8), #39 topic de Kafka (#10), #40 producer (#9), #49 documentación de la Semana 2, #50 conector Kafka de Spark, #51 Spark en Docker (#17) |
-| Joseph Santiago Morales Carrillo | #33 contrato JSON (#3), #34 KPIs y alertas (#4), #41 lectura y parseo con Spark (#11), #43 transformaciones y ventanas (#12), #45 alertas, Parquet y checkpoint (#13) |
-| Richard Jesus Chachalo Madriñan | #36 arquitectura (#5), #37 compose base (#7), #46 pruebas (#14), #47 CI (#15), #48 ADR-002 y checkpoint de la Semana 2 (#16) |
+| Juan Sebastián Organista Ramirez | #35 ADR-001 (#6), #38 README y plantilla de PR (#8), #39 topic de Kafka (#10), #40 producer (#9), #49 documentación de la Semana 2, #50 conector Kafka de Spark, #51 Spark en Docker (#17), #52 Airflow en Docker Compose (#18), #53 DAG de observabilidad (#19), #54 retries y XCom (#20) |
+| Joseph Santiago Morales Carrillo | #33 contrato JSON (#3), #34 KPIs y alertas (#4), #41 lectura y parseo con Spark (#11), #43 transformaciones y ventanas (#12), #45 alertas, Parquet y checkpoint (#13), #55 pruebas de reglas de negocio ampliadas (#21), #56 CI: validación del DAG (#22) |
+| Richard Jesus Chachalo Madriñan | #36 arquitectura (#5), #37 compose base (#7), #46 pruebas (#14), #47 CI (#15), #48 ADR-002 y checkpoint de la Semana 2 (#16), #57 fallo controlado y recuperación (#23), #58 ADR-003 y checkpoint de la Semana 3 (#24) |
 
 ## Plan de las siguientes semanas
 
-- **Semana 3:** DAG de Airflow con tareas, dependencias, retries, XCom, calidad y resiliencia.
 - **Semana 4:** integración final, quality gate, release `v1.0.0` y video final.
