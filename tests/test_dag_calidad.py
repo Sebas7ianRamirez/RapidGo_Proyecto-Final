@@ -79,3 +79,23 @@ def test_el_dag_no_tiene_ciclos(dagbag):
     dag = dagbag.dags["rapidgo_pipeline_observabilidad"]
     # test_cycle lanza AirflowDagCycleException si hay un ciclo; no lanzar nada = sin ciclos
     dag.check_cycle()
+
+
+def test_validar_curated_falla_sin_parquet(tmp_path, monkeypatch):
+    modulo = __import__(
+        "airflow.dags.rapidgo_pipeline_dag",
+        fromlist=["validar_curated"],
+    )
+
+    monkeypatch.setattr(
+        "airflow.dags.rapidgo_pipeline_dag.os.path.exists",
+        lambda path: True,
+    )
+
+    monkeypatch.setattr(
+        "airflow.dags.rapidgo_pipeline_dag.os.listdir",
+        lambda path: [],
+    )
+
+    with pytest.raises(FileNotFoundError):
+        modulo.validar_curated()

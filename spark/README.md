@@ -1,43 +1,66 @@
-# Módulo de Procesamiento con Spark Structured Streaming (Gate S2)
+# Módulo de Procesamiento con Spark Structured Streaming
 
 ## Requisitos
-- Python 3.10+
-- Dependencias de `requirements-spark.txt`.
+
+- Docker Desktop o Docker Engine con Docker Compose v2.
+- Python 3.12 o superior para ejecutar el productor desde el host.
+- Puertos libres: `9092` para Kafka.
 
 ## Componentes
-- `esquema.py`: `StructType` con los 9 campos del contrato.
-- `streaming.py`: job que lee de Kafka, parsea, convierte `timestamp`→`event_time`, valida campos/rangos y separa malformados con `raw_json`.
 
-## Configuración por Entorno
-- `KAFKA_BOOTSTRAP_SERVERS` (default `localhost:9092`)
-- `RAPIDGO_TOPIC` (default `rapidgo.observabilidad.eventos`)
+- `esquema.py`: define el `StructType` con los nueve campos del contrato.
+- `streaming.py`: job base de lectura y validación desde Kafka.
+- `streaming_alertas.py`: job utilizado por Docker Compose; escribe eventos válidos y KPIs en Parquet.
+- `streaming_metricas.py`: job alternativo para calcular métricas desde Kafka.
+- `parseo.py`: centraliza la validación de eventos.
+- `reglas.py`: define las reglas de alerta.
 
-## Ejecución
-```bash
-pip install -r requirements-spark.txt
-python streaming.py
+## Ejecución recomendada con Docker
+
+1. Inicia Kafka y crea el topic:
+
+```powershell
+docker compose up -d
+docker compose ps -a
 ```
-## Manejor de Errores
-- Se filtran nulos en los 9 campos, servicios fuera del contrato y codigo_http fuera de 100-599.
 
-- Los inválidos se muestran en una segunda consulta vía raw_json sin cortar el stream.
+2. Inicia Spark antes del productor:
 
-## Alertas y Data Lake (Issue #13)
-- La lógica de validación estricta está centralizada en `spark/parseo.py` (`condicion_valido()`).
-- El job `streaming_alertas.py` escribe los eventos válidos en `datalake/processed/eventos` en formato Parquet.
-- Los KPIs con las alertas calculadas se escriben en `datalake/curated/kpis_alertas`.
-- Las alertas se definen en `spark/reglas.py` (`evaluar_alerta_error` > 0.05 y `evaluar_alerta_latencia` > 2000 ms).
+```powershell
+docker compose --profile spark up -d spark-streaming
+docker compose logs -f spark-streaming
+```
 
-## Ejecutar Spark en Docker (Windows, Linux o Cloud Shell)
+3. Espera hasta ver `Batch: 0`.
 
-Spark corre en un contenedor Linux, así que no necesita Java, winutils ni Python local. En Windows, ejecutar `python streaming_alertas.py` directamente falla con `HADOOP_HOME and hadoop.home.dir are unset`.
+4. En otra terminal, genera eventos:
 
-1. `docker compose up -d`
-2. `docker compose --profile spark up -d spark-streaming`
-3. `docker compose logs -f spark-streaming` (esperar `Batch: 0`; Ctrl+C solo deja de mostrar los logs)
-4. En otra terminal: `python -m producer.main --tasa 5 --max-eventos 300`
+```powershell
+python -m producer.main --tasa 5 --max-eventos 300
+```
 
-Spark lee solo eventos posteriores a su arranque (`startingOffsets=latest`): inícialo antes del producer.
-Los Parquet quedan en `datalake/` y los checkpoints en `spark-checkpoints/`; ambos están en `.gitignore`.
-Las ventanas de `curated` se escriben cuando el watermark (2 minutos) las cierra, así que el producer debe seguir enviando eventos unos minutos.
-Detener sin borrar datos: `docker compose --profile spark stop spark-streaming`.
+Spark lee únicamente eventos posteriores a su arranque (`startingOffsets=latest`). Por eso debe iniciarse antes del productor.
+
+Los archivos Parquet se escriben en `datalake/` y los checkpoints en `spark-checkpoints/`. Ambas carpetas están en `.gitignore`.
+
+Las ventanas de la capa `curated` se escriben cuando el watermark de dos minutos las cierra. Por ello, el productor debe seguir enviando eventos durante varios minutos.
+
+Para detener Spark sin borrar checkpoints:
+
+```powershell
+docker compose --profile spark stop spark-streaming
+```
+
+## Manejo de errores
+
+- Se filtran eventos con campos nulos.
+- Se filtran servicios fuera del contrato.
+- Se filtran códigos HTTP fuera del rango 100–599.
+- Los eventos inválidos se exponen mediante `raw_json` sin detener el stream.
+
+## Alertas y Data Lake
+
+- `spark/parseo.py` contiene `condicion_valido()`.
+- `spark/streaming_alertas.py` escribe eventos válidos en `datalake/processed/eventos`.
+- `spark/streaming_alertas.py` escribe KPIs y alertas en `datalake/curated/kpis_alertas`.
+- `spark/reglas.py` define alertas cuando el error rate supera 0.05 o la latencia p95 supera 2000 ms.
