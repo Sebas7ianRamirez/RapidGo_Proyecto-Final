@@ -112,7 +112,7 @@ El pipeline implementa:
 ### 1. Clonar y preparar Python
 
 ```powershell
-git clone [https://github.com/Sebas7ianRamirez/RapidGo_Proyecto-Final.git](https://github.com/Sebas7ianRamirez/RapidGo_Proyecto-Final.git)
+git clone https://github.com/Sebas7ianRamirez/RapidGo_Proyecto-Final.git
 cd RapidGo_Proyecto-Final
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1

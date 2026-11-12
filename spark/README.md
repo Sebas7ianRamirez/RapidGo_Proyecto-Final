@@ -36,7 +36,7 @@ docker compose logs -f spark-streaming
 4. En otra terminal, genera eventos:
 
 ```powershell
-python -m producer.main --tasa 5 --max-eventos 300
+python -m producer.main --tasa 5 --escenario latencia_alta --anomalia-inicio 60 --anomalia-duracion 180 --max-eventos 1500
 ```
 
 Spark lee únicamente eventos posteriores a su arranque (`startingOffsets=latest`). Por eso debe iniciarse antes del productor.
