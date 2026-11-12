@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validar:
     runs-on: ubuntu-latest
@@ -50,3 +54,17 @@ jobs:
 
       - name: Validar Docker Compose
         run: docker compose config --quiet
+
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    needs: validar
+    if: always()
+    steps:
+      - name: Evaluar resultado del CI
+        run: |
+          if [ "${{ needs.validar.result }}" != "success" ]; then
+            echo "Quality Gate RECHAZADO: el CI falló. No se debe crear el tag v1.0.0."
+            exit 1
+          fi
+          echo "Quality Gate APROBADO: se puede crear el tag v1.0.0."
