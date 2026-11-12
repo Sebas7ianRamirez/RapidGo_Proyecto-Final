@@ -33,8 +33,8 @@ Generador de eventos -> Kafka -> Spark Structured Streaming -> Data Lake -> Airf
 - **Generador de eventos:** simula eventos de `pedidos-api`, `pagos-api`, `tracking-api` y `usuarios-api`.
 - **Kafka:** transporta los eventos mediante el topic `rapidgo.observabilidad.eventos`.
 - **Spark Structured Streaming:** consume, valida y procesa los eventos; calcula KPIs y escribe resultados en el Data Lake.
-- **Data Lake:** organiza la información en las capas `raw`, `processed` y `curated`.
-- **Airflow:** orquestará tareas de calidad, agregación y reporte (Semana 3). El servicio ya está disponible en Docker.
+- **Data Lake:** guarda eventos válidos en `datalake/processed/eventos` y KPIs con alertas en `datalake/curated/kpis_alertas`.
+- **Airflow:** valida las fuentes, agrega métricas, valida la capa `curated` y genera un reporte final.
 - **Indicadores y alertas:** error rate, latencia p95, disponibilidad y reglas de alerta.
 
 ## Contrato del evento
@@ -88,19 +88,122 @@ El pipeline implementa:
 
 - Generación y publicación de eventos en Kafka con key `servicio` y escenarios de anomalía.
 - Topic `rapidgo.observabilidad.eventos` con 3 particiones.
-- Procesamiento con Spark Structured Streaming, ejecutado en Docker.
-- Persistencia en Parquet de los eventos válidos (`datalake/processed`) y de los KPIs con alertas (`datalake/curated`).
+- Procesamiento con Spark Structured Streaming ejecutado en Docker.
+- Persistencia de eventos válidos en `datalake/processed/eventos`.
+- Persistencia de KPIs y alertas en `datalake/curated/kpis_alertas`.
 - Alertas de error rate alto y latencia crítica.
-- Airflow 3.3.1 en Docker con el DAG `rapidgo_pipeline_observabilidad`: 5 tareas con dependencias lineales estrictas, retries configurados y transferencia de métricas vía XCom.
-- Validaciones estrictas en las capas raw y curated (solo Parquet real, falla si están vacías).
-- Fallo controlado y recuperación documentados (Issue #23): ausencia de datos, reintentos agotados, bloqueo en cascada y recuperación exitosa.
-- CI ampliado: valida sintaxis, ejecuta pruebas (incluyendo pruebas de calidad del DAG) e importa el DAG con `DagBag` antes de correr la suite completa.
-- Pruebas automatizadas y CI con GitHub Actions.
+- Airflow 3.3.1 en Docker con el DAG `rapidgo_pipeline_observabilidad`.
+- DAG con cinco tareas, dependencias lineales, reintentos y transferencia de métricas mediante XCom.
+- Validación de eventos Parquet en `datalake/processed/eventos` y de KPIs Parquet en `datalake/curated/kpis_alertas`.
+- Fallo controlado y recuperación documentados en el Issue #23.
+- CI que valida sintaxis, pruebas, importación del DAG y `docker-compose.yml`.
 
-- Pruebas: `python -m pytest -v`.
-- Los Parquet quedan en `datalake/` y los checkpoints de Spark en `spark-checkpoints/`; ambas carpetas están en `.gitignore`.
-- Pausar sin perder datos: `docker compose stop` y luego `docker compose start`. Con `docker compose down` se pierden los mensajes del topic.
-- Detalles de Spark: [`spark/README.md`](spark/README.md).
+## Cómo ejecutarlo desde cero
+
+### Prerrequisitos
+
+- Git.
+- Docker Desktop o Docker Engine con Docker Compose v2.
+- Python 3.12 o superior.
+- Conexión a internet en el primer arranque, para descargar imágenes y dependencias de Spark.
+- Puertos libres: `9092` para Kafka y `8088` para la interfaz de Airflow.
+- Memoria suficiente para ejecutar Kafka, Spark y Airflow simultáneamente.
+
+### 1. Clonar y preparar Python
+
+```powershell
+git clone https://github.com/Sebas7ianRamirez/RapidGo_Proyecto-Final.git
+cd RapidGo_Proyecto-Final
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+En Linux o macOS usa:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 2. Iniciar Kafka y crear el topic
+
+```powershell
+docker compose up -d
+docker compose ps -a
+```
+
+Verifica que:
+
+- `kafka` esté `Up` y healthy.
+- `kafka-init` termine con `Exited (0)`.
+- `spark-streaming` y `airflow` permanezcan detenidos en este paso.
+
+### 3. Iniciar Spark antes del producer
+
+```powershell
+docker compose --profile spark up -d spark-streaming
+docker compose logs -f spark-streaming
+```
+
+Espera hasta ver `Batch: 0`. Spark está configurado para leer solo eventos publicados después de su arranque.
+
+Para salir del log sin detener Spark, presiona `Ctrl+C`.
+
+### 4. Generar eventos
+
+Abre otra terminal, activa el mismo entorno virtual y ejecuta:
+
+```powershell
+python -m producer.main --tasa 5 --max-eventos 1500
+```
+
+Deja el producer ejecutándose al menos cinco minutos. Las ventanas de la capa `curated` se cierran con un watermark de dos minutos.
+
+### 5. Verificar el Data Lake
+
+```powershell
+(Get-ChildItem datalake\processed -Recurse -Filter *.parquet).Count
+(Get-ChildItem datalake\curated -Recurse -Filter *.parquet).Count
+```
+
+Deben existir archivos Parquet en ambas rutas. Si `curated` todavía muestra cero archivos, continúa generando eventos y vuelve a verificar después de unos minutos.
+
+### 6. Iniciar Airflow
+
+```powershell
+docker compose --profile airflow up -d airflow
+docker compose logs airflow | Select-String password
+```
+
+Abre <http://localhost:8088>, inicia sesión con el usuario `admin` y la contraseña mostrada en los logs. Luego busca y ejecuta el DAG `rapidgo_pipeline_observabilidad`.
+
+### 7. Ejecutar pruebas
+
+```powershell
+python -m pytest -v
+```
+
+Las pruebas del DAG pueden aparecer como omitidas si Apache Airflow no está instalado localmente. El workflow de GitHub Actions sí las ejecuta.
+
+### Detener sin perder datos
+
+```powershell
+docker compose --profile spark --profile airflow stop
+```
+
+Para volver a iniciar los servicios detenidos:
+
+```powershell
+docker compose --profile spark --profile airflow start
+```
+
+### Comandos que borran datos
+
+`docker compose down` elimina los contenedores. Esto puede borrar los mensajes almacenados en Kafka y el historial de ejecuciones de Airflow, porque la base SQLite vive dentro del contenedor.
+
+No borres manualmente `datalake/` ni `spark-checkpoints/` si deseas conservar los resultados y checkpoints previos.
 
 ## Airflow
 
