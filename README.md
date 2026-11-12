@@ -73,6 +73,7 @@ Los detalles están en [`docs/kpis_alertas.md`](docs/kpis_alertas.md).
 - [ADR-001 — Topic, key y particiones de Kafka](docs/decisions/ADR-001-kafka-topic-key-particiones.md)
 - [ADR-002 — Validación y calibración de umbrales de alerta](docs/decisions/ADR-002-validacion-umbrales.md)
 - [ADR-003 — Recuperación ante fallos](docs/decisions/ADR-003-recuperacion-ante-fallos.md)
+- [ADR-004 — Proceso de release manual](docs/decisions/ADR-004-proceso-release-manual.md)
 
 ## Checkpoints semanales
 
